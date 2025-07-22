@@ -311,6 +311,9 @@ class FreeformWindow(
         }
         freeformRootView.addView(freeformView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         windowParams.apply {
+            gravity = Gravity.LEFT | Gravity.TOP
+            x = freeformConfig.offsetX
+            y = freeformConfig.offsetY
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             width = WindowManager.LayoutParams.WRAP_CONTENT
             height = WindowManager.LayoutParams.WRAP_CONTENT

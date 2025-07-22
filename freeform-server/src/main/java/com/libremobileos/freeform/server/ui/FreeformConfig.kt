@@ -19,5 +19,7 @@ data class FreeformConfig @JvmOverloads constructor(
     var freeformWidth: Int = 1080,
     var freeformHeight: Int = 1920,
     //小窗屏幕尺寸/小窗界面尺寸
-    var scale: Float = 1.0f
+    var scale: Float = 1.0f,
+    var offsetX: Int,
+    var offsetY: Int
 )

@@ -14,13 +14,13 @@ import java.util.HashMap;
 public class FreeformWindowManager {
     private static final HashMap<String, FreeformWindow> freeformWindows = new HashMap<>(1);
     private static final String TAG = "FreeformWindowManager";
-
+    
     public static void addWindow(
             Handler handler, Context context,
             String packageName, String activityName, int userId, int taskId,
-            PendingIntent pendingIntent, int width, int height, int densityDpi) {
+            PendingIntent pendingIntent, int width, int height, int densityDpi, int offsetX, int offsetY) {
         AppConfig appConfig = new AppConfig(packageName, activityName, pendingIntent, userId, taskId);
-        FreeformConfig freeformConfig = new FreeformConfig(width, height, densityDpi);
+        FreeformConfig freeformConfig = new FreeformConfig(width, height, densityDpi, offsetX, offsetY);
         FreeformWindow window = new FreeformWindow(handler, context, appConfig, freeformConfig);
         dlog(TAG, "addWindow: " + packageName + "/" + activityName + ", freeformId=" + window.getFreeformId()
                 + ", existing freeformWindows=" + freeformWindows);

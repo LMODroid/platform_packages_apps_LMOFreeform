@@ -12,7 +12,7 @@ import com.libremobileos.freeform.ILMOFreeformDisplayCallback;
 interface ILMOFreeformUIService {
     // start freeform in system
     void startAppInFreeform(String packageName, String activityName, int userId, int taskId,
-                       in PendingIntent pendingIntent, int width, int height, int densityDpi) = 0;
+                       in PendingIntent pendingIntent, int width, int height, int densityDpi, int offsetX, int offsetY) = 0;
     // remove freeform by freeformId: packageName,activityName,userId
     void removeFreeform(String freeformId) = 1;
     // create freeform in user

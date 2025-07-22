@@ -26,20 +26,27 @@ class StartFreeformReceiver : BroadcastReceiver() {
             val activityName = intent.getStringExtra("activityName")
             val userId = intent.getIntExtra("userId", 0)
             val taskId = intent.getIntExtra("taskId", -1)
+            val sp = context.getSharedPreferences(LMOFreeform.CONFIG, Context.MODE_PRIVATE)
+            val screenWidth = context.resources.displayMetrics.widthPixels
+            val screenHeight = context.resources.displayMetrics.heightPixels
+            val screenDensityDpi = context.resources.displayMetrics.densityDpi
+            val freeformWidth = intent.getIntExtra("width", sp.getInt("freeform_width", (screenWidth * 0.7f).roundToInt()))
+            val freeformHeight = intent.getIntExtra("height", sp.getInt("freeform_height", (screenHeight * 0.4f).roundToInt()))
+            val dpi = intent.getIntExtra("dpi", sp.getInt("freeform_dpi", screenDensityDpi))
+            val offsetX = intent.getIntExtra("offsetX", ((screenWidth - freeformWidth) / 2).roundToInt())
+            val offsetY = intent.getIntExtra("offsetY", ((screenHeight - freeformHeight) / 2).roundToInt())
 
             if (packageName != null && activityName != null) {
-                val sp = context.getSharedPreferences(LMOFreeform.CONFIG, Context.MODE_PRIVATE)
-                val screenWidth = context.resources.displayMetrics.widthPixels
-                val screenHeight = context.resources.displayMetrics.heightPixels
-                val screenDensityDpi = context.resources.displayMetrics.densityDpi
                 LMOFreeformServiceManager.createWindow(
                     packageName,
                     activityName,
                     userId,
                     taskId,
-                    sp.getInt("freeform_width", (screenWidth * 0.7f).roundToInt()),
-                    sp.getInt("freeform_height", (screenHeight * 0.4f).roundToInt()),
-                    sp.getInt("freeform_dpi", screenDensityDpi),
+                    freeformWidth,
+                    freeformHeight,
+                    dpi,
+                    offsetX,
+                    offsetY
                 )
             }
         }

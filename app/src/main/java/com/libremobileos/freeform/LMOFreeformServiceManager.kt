@@ -44,7 +44,9 @@ object LMOFreeformServiceManager {
             null,
             width,
             height,
-            densityDpi
+            densityDpi,
+            offsetX,
+            offsetY
         )
     }
 
@@ -57,7 +59,9 @@ object LMOFreeformServiceManager {
             pendingIntent,
             width,
             height,
-            densityDpi
+            densityDpi,
+            offsetX,
+            offsetY
         )
     }
 
