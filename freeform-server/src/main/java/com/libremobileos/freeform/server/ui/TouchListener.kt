@@ -1,7 +1,6 @@
 package com.libremobileos.freeform.server.ui
 
 import android.annotation.SuppressLint
-import android.os.Build
 import android.util.Slog
 import android.view.Display
 import android.view.MotionEvent
@@ -57,11 +56,15 @@ class LeftViewLongClickListener(private val window: FreeformWindow): View.OnLong
     }
     override fun onLongClick(v: View): Boolean {
         if (null != window.freeformTaskStackListener) {
-            if (window.freeformTaskStackListener!!.taskId == -1) {
-                Slog.e(TAG, "taskId is -1, can`t move")
+            val taskId = window.freeformTaskStackListener!!.taskId
+            if (taskId == -1) {
+                Slog.e(TAG, "taskId is -1, cannot move")
                 return true
             }
-            runCatching { SystemServiceHolder.activityTaskManager.moveRootTaskToDisplay(window.freeformTaskStackListener!!.taskId, Display.DEFAULT_DISPLAY) }
+            window.postOnWorkerHandler {
+                runCatching { SystemServiceHolder.activityTaskManager.moveRootTaskToDisplay(taskId, Display.DEFAULT_DISPLAY) }
+                    .onFailure { Slog.e(TAG, "moveRootTaskToDisplay failed: $it") }
+            }
         }
         // not required because taskStackListener's onTaskDisplayChanged() will be called
         // which in turn calls destroy()
@@ -75,9 +78,9 @@ class LeftViewLongClickListener(private val window: FreeformWindow): View.OnLong
  */
 class RightViewLongClickListener(private val window: FreeformWindow): View.OnLongClickListener {
     override fun onLongClick(v: View): Boolean {
-        window.handler.post {
+        window.postOnHandler {
             // hangup
-            window.handleHangUp()
+            handleHangUp()
         }
         return true
     }
@@ -117,15 +120,9 @@ class ScaleTouchListener(private val window: FreeformWindow, private val isRight
                 if (window.freeformView.surfaceTexture != null) {
                     window.freeformConfig.width = window.freeformRootView.layoutParams.width
                     window.freeformConfig.height = window.freeformRootView.layoutParams.height
-                    window.handler.post { window.makeSureFreeformInScreen() }
+                    window.postOnHandler { makeSureFreeformInScreen() }
                     window.measureScale()
-                    LMOFreeformServiceHolder.resizeFreeform(
-                        window,
-                        window.freeformConfig.freeformWidth,
-                        window.freeformConfig.freeformHeight,
-                        window.freeformConfig.densityDpi
-                    )
-                    window.freeformView.surfaceTexture!!.setDefaultBufferSize(window.freeformConfig.freeformWidth, window.freeformConfig.freeformHeight)
+                    window.resizeFreeformDisplay()
                 }
             }
         }
@@ -160,7 +157,7 @@ class MinimizedIconTouchListener(private val window: FreeformWindow) : View.OnTo
             }
             MotionEvent.ACTION_UP -> {
                 if (!hasMoved) {
-                    window.handler.post { window.handleHangUp() }
+                    window.postOnHandler { handleHangUp() }
                 }
             }
         }

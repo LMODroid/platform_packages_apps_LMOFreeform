@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
 import android.os.Handler
+import android.os.Process
 import android.util.Slog
 import android.view.Display
 import android.view.DisplayInfo
@@ -18,6 +19,7 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import com.android.server.LocalServices
+import com.android.server.ServiceThread
 import com.android.server.wm.WindowManagerInternal
 import com.libremobileos.freeform.ILMOFreeformDisplayCallback
 import com.libremobileos.freeform.server.util.Debug.dlog
@@ -29,7 +31,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 class FreeformWindow(
-    val handler: Handler,
+    private val handler: Handler,
     val context: Context,
     private val appConfig: AppConfig,
     val freeformConfig: FreeformConfig
@@ -54,30 +56,30 @@ class FreeformWindow(
     var defaultDisplayRotation = context.display.rotation
     private val defaultDisplayInfo = DisplayInfo()
     private val destroyRunnable = Runnable { destroy("destroyRunnable", true) }
+    /**
+     * For calls into the activity task manager and the display manager: those are synchronous and
+     * can block for seconds while the window manager lock is held. Running them on [handler] would
+     * stop us from reading this window's input channel, which ANRs the window.
+     */
+    private val workerThread =
+        ServiceThread("FreeformWindow", Process.THREAD_PRIORITY_DISPLAY, false /*allowIo*/)
+            .apply { start() }
+    private val workerHandler = workerThread.threadHandler
 
     private val rotationWatcher = object : IRotationWatcher.Stub() {
         override fun onRotationChanged(rotation: Int) {
             dlog(TAG, "onRotationChanged($rotation)")
-            defaultDisplayWidth = context.resources.displayMetrics.widthPixels
-            defaultDisplayHeight = context.resources.displayMetrics.heightPixels
-            defaultDisplayRotation = context.display.rotation
-            measureSize()
             handler.post {
+                defaultDisplayWidth = context.resources.displayMetrics.widthPixels
+                defaultDisplayHeight = context.resources.displayMetrics.heightPixels
+                defaultDisplayRotation = context.display.rotation
+                measureSize()
                 changeOrientation()
                 if (freeformConfig.isHangUp) toMinimizedIcon()
                 else makeSureFreeformInScreen()
+                measureScale()
+                resizeFreeformDisplay()
             }
-            measureScale()
-            LMOFreeformServiceHolder.resizeFreeform(
-                this@FreeformWindow,
-                freeformConfig.freeformWidth,
-                freeformConfig.freeformHeight,
-                freeformConfig.densityDpi
-            )
-            freeformView?.surfaceTexture?.setDefaultBufferSize(
-                freeformConfig.freeformWidth,
-                freeformConfig.freeformHeight
-            )
         }
     }
 
@@ -188,14 +190,12 @@ class FreeformWindow(
     override fun onDisplayHasSecureWindowOnScreenChanged(displayId: Int, hasSecureWindowOnScreen: Boolean) {
         if (displayId != this.displayId) return;
         dlog(TAG, "onDisplayHasSecureWindowOnScreenChanged: $hasSecureWindowOnScreen")
-        windowParams.apply {
-            flags = if (hasSecureWindowOnScreen) {
-                flags or WindowManager.LayoutParams.FLAG_SECURE
-            } else {
-                flags xor WindowManager.LayoutParams.FLAG_SECURE
-            }
-        }
         handler.post {
+            windowParams.flags = if (hasSecureWindowOnScreen) {
+                windowParams.flags or WindowManager.LayoutParams.FLAG_SECURE
+            } else {
+                windowParams.flags and WindowManager.LayoutParams.FLAG_SECURE.inv()
+            }
             runCatching { windowManager.updateViewLayout(freeformLayout, windowParams) }
                 .onFailure { Slog.e(TAG, "updateViewLayout failed: $it") }
         }
@@ -430,6 +430,21 @@ class FreeformWindow(
         else if (windowParams.y > (defaultDisplayHeight / 2)) FreeformAnimation.moveInScreenAnimator(windowParams.y, (defaultDisplayHeight / 2), 300, false, this)
     }
 
+    fun resizeFreeformDisplay() {
+        workerHandler.post {
+            LMOFreeformServiceHolder.resizeFreeform(
+                this@FreeformWindow,
+                freeformConfig.freeformWidth,
+                freeformConfig.freeformHeight,
+                freeformConfig.densityDpi
+            )
+            freeformView.surfaceTexture?.setDefaultBufferSize(
+                freeformConfig.freeformWidth,
+                freeformConfig.freeformHeight
+            )
+        }
+    }
+
     /**
      * Change freeform orientation
      * Called in system handler
@@ -446,14 +461,30 @@ class FreeformWindow(
         return "${appConfig.packageName},${appConfig.activityName},${appConfig.userId}"
     }
 
+    /**
+     * Runs [action] on the thread that owns this window's views.
+     */
+    fun postOnHandler(action: FreeformWindow.() -> Unit) {
+        handler.post { action() }
+    }
+
+    /**
+     * Runs [action] off the window handler, for calls that can block. See [workerThread].
+     */
+    fun postOnWorkerHandler(action: FreeformWindow.() -> Unit) {
+        workerHandler.post { action() }
+    }
+
     fun close() {
         dlog(TAG, "close()")
-        runCatching {
-            SystemServiceHolder.activityTaskManager.removeTask(freeformTaskStackListener!!.taskId)
-            removeView()
-        }.onFailure { exception ->
-            Slog.e(TAG, "removeTask failed: ", exception)
-            destroy("window.close() fallback")
+        workerHandler.post {
+            runCatching {
+                SystemServiceHolder.activityTaskManager.removeTask(freeformTaskStackListener!!.taskId)
+                removeView()
+            }.onFailure { exception ->
+                Slog.e(TAG, "removeTask failed: ", exception)
+                destroy("window.close() fallback")
+            }
         }
     }
 

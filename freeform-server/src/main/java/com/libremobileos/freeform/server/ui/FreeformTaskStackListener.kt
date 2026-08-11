@@ -74,7 +74,7 @@ class FreeformTaskStackListener(
     override fun onTaskRemoved(taskId: Int) {
         if (this.taskId == taskId) {
             dlog(TAG, "onTaskRemoved $taskId")
-            window.destroy("onTaskRemoved", true)
+            window.postOnHandler { destroy("onTaskRemoved", true) }
         }
     }
 
@@ -125,7 +125,7 @@ class FreeformTaskStackListener(
 
     override fun onTaskDisplayChanged(taskId: Int, newDisplayId: Int) {
         if (taskId == this.taskId && newDisplayId == Display.DEFAULT_DISPLAY) {
-            window.destroy("onTaskDisplayChanged: $taskId to main display")
+            window.postOnHandler { destroy("onTaskDisplayChanged: $taskId to main display") }
         } else if (newDisplayId == displayId) {
             this.taskId = taskId
             dlog(TAG, "onTaskDisplayChanged: $taskId to freeform display")
@@ -151,27 +151,29 @@ class FreeformTaskStackListener(
     override fun onTaskRequestedOrientationChanged(taskId: Int, requestedOrientation: Int) {
         if (taskId == this.taskId) {
             dlog(TAG, "onTaskRequestedOrientationChanged: $requestedOrientation")
-            val max = max(window.freeformConfig.width, window.freeformConfig.height)
-            val min = min(window.freeformConfig.width, window.freeformConfig.height)
-            val maxHangUp = max(window.freeformConfig.hangUpWidth, window.freeformConfig.hangUpHeight)
-            val minHangUp = min(window.freeformConfig.hangUpWidth, window.freeformConfig.hangUpHeight)
-            when (requestedOrientation) {
-                PORTRAIT -> {
-                    dlog(TAG, "PORTRAIT")
-                    window.freeformConfig.width = min
-                    window.freeformConfig.height = max
-                    window.freeformConfig.hangUpWidth = minHangUp
-                    window.freeformConfig.hangUpHeight = maxHangUp
+            window.postOnHandler {
+                val max = max(freeformConfig.width, freeformConfig.height)
+                val min = min(freeformConfig.width, freeformConfig.height)
+                val maxHangUp = max(freeformConfig.hangUpWidth, freeformConfig.hangUpHeight)
+                val minHangUp = min(freeformConfig.hangUpWidth, freeformConfig.hangUpHeight)
+                when (requestedOrientation) {
+                    PORTRAIT -> {
+                        dlog(TAG, "PORTRAIT")
+                        freeformConfig.width = min
+                        freeformConfig.height = max
+                        freeformConfig.hangUpWidth = minHangUp
+                        freeformConfig.hangUpHeight = maxHangUp
+                    }
+                    LANDSCAPE_1, LANDSCAPE_2 -> {
+                        dlog(TAG, "LANDSCAPE")
+                        freeformConfig.width = max
+                        freeformConfig.height = min
+                        freeformConfig.hangUpWidth = maxHangUp
+                        freeformConfig.hangUpHeight = minHangUp
+                    }
                 }
-                LANDSCAPE_1, LANDSCAPE_2 -> {
-                    dlog(TAG, "LANDSCAPE")
-                    window.freeformConfig.width = max
-                    window.freeformConfig.height = min
-                    window.freeformConfig.hangUpWidth = maxHangUp
-                    window.freeformConfig.hangUpHeight = minHangUp
-                }
+                changeOrientation()
             }
-            window.handler.post { window.changeOrientation() }
         }
     }
 

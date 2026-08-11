@@ -10,6 +10,7 @@ import android.hardware.display.DisplayManagerInternal;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.util.ArrayMap;
@@ -17,6 +18,8 @@ import android.util.Slog;
 import android.view.Surface;
 
 import java.util.Map;
+
+import com.android.server.ServiceThread;
 
 import com.libremobileos.freeform.ILMOFreeformDisplayCallback;
 import com.libremobileos.freeform.ILMOFreeformUIService;
@@ -31,8 +34,10 @@ public class LMOFreeformUIService extends ILMOFreeformUIService.Stub {
     private DisplayManagerInternal displayManager = null;
     private LMOFreeformService lmoFreeformService = null;
     // private Handler uiHandler = null;
-    private Handler handler = new Handler();
-
+    // Freeform windows live inside system_server, so hosting them on the main looper means
+    // every slow bit of freeform work (layout inflation, icon loading, input injection) freezes
+    // the whole system and can even make system_server ANR. Give them their own looper instead.
+    private Handler handler = null;
     public LMOFreeformUIService(Context context, DisplayManagerInternal displayManager, LMOFreeformService lmoFreeformService) {
         if (null == context || null == displayManager || null == lmoFreeformService) return;
 
@@ -41,6 +46,10 @@ public class LMOFreeformUIService extends ILMOFreeformUIService.Stub {
         this.lmoFreeformService = lmoFreeformService;
         // this.uiHandler = displayManager.getUiHandler();
         // this.handler = displayManager.getHandler();
+        ServiceThread thread = new ServiceThread(
+                "LMOFreeformUIService", Process.THREAD_PRIORITY_DISPLAY, true /*allowIo*/);
+        thread.start();
+        handler = thread.getThreadHandler();
 
         SystemServiceHolder.init();
         try {
