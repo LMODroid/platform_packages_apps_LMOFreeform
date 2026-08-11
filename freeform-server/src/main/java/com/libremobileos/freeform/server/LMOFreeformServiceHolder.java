@@ -68,7 +68,7 @@ public class LMOFreeformServiceHolder {
         try {
             Intent intent = new Intent();
             intent.setComponent(new ComponentName(appConfig.getPackageName(), appConfig.getActivityName()));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
             intent.setAction(Intent.ACTION_MAIN);
             intent.addCategory(Intent.CATEGORY_LAUNCHER);
             ActivityOptions activityOptions = ActivityOptions.makeBasic();
