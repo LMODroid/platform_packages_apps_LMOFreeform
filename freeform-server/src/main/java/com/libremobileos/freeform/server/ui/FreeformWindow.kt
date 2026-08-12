@@ -56,6 +56,10 @@ class FreeformWindow(
     var defaultDisplayRotation = context.display.rotation
     private val defaultDisplayInfo = DisplayInfo()
     private val destroyRunnable = Runnable { destroy("destroyRunnable", true) }
+    private val releaseDisplayRunnable = Runnable {
+        LMOFreeformServiceHolder.releaseFreeform(this@FreeformWindow)
+        workerThread.quitSafely()
+    }
     /**
      * For calls into the activity task manager and the display manager: those are synchronous and
      * can block for seconds while the window manager lock is held. Running them on [handler] would
@@ -88,6 +92,8 @@ class FreeformWindow(
         private const val FREEFORM_PACKAGE = "com.libremobileos.freeform"
         private const val FREEFORM_LAYOUT = "view_freeform"
         private const val WINDOW_DESTROY_WAIT_MS = 10000L
+        // Long enough for the transition that moves the task off this display to finish.
+        private const val DISPLAY_RELEASE_DELAY_MS = 500L
         private const val SIDEBAR_PACKAGE = "com.libremobileos.sidebar"
         private const val ALL_APP_ACTIVITY = "com.libremobileos.sidebar.ui.all_app.AllAppActivity"
         private const val MINIMIZED_CONTAINER_WIDTH_DP = 88
@@ -504,15 +510,23 @@ class FreeformWindow(
             handler.postDelayed(destroyRunnable, WINDOW_DESTROY_WAIT_MS)
     }
 
-    fun destroy(callReason: String, shouldRemoveTask: Boolean = false) {
+    fun destroy(
+        callReason: String,
+        shouldRemoveTask: Boolean = false,
+        delayDisplayRelease: Boolean = false,
+    ) {
         Slog.i(TAG, "destroy ${getFreeformId()}, displayId=$displayId callReason: $callReason")
         removeView(false)
         handler.removeCallbacks(destroyRunnable)
         SystemServiceHolder.activityTaskManager.unregisterTaskStackListener(freeformTaskStackListener)
         SystemServiceHolder.windowManager.removeRotationWatcher(rotationWatcher)
-        LMOFreeformServiceHolder.releaseFreeform(this)
         FreeformWindowManager.removeWindow(getFreeformId())
         windowManagerInt.unregisterDisplaySecureContentListener(this)
+        // A task moving to another display still hangs from this display's hierarchy until the
+        // transition finishes, so let that settle before pulling the display out from under it.
+        workerHandler.removeCallbacks(releaseDisplayRunnable)
+        workerHandler.postDelayed(releaseDisplayRunnable,
+            if (delayDisplayRelease) DISPLAY_RELEASE_DELAY_MS else 0)
         freeformTaskStackListener!!.taskId.let {
             if (it != -1 && shouldRemoveTask) {
                 Slog.i(TAG, "destroy: remove taskId $it again")
