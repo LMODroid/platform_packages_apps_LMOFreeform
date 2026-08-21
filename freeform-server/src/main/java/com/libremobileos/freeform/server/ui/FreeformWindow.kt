@@ -50,7 +50,7 @@ class FreeformWindow(
     private lateinit var bottomBarView: View
     private lateinit var minimizedIconContainer: View
     private lateinit var minimizedIconImage: ImageView
-    private var displayId = Display.INVALID_DISPLAY
+    var displayId = Display.INVALID_DISPLAY
     var defaultDisplayWidth = context.resources.displayMetrics.widthPixels
     var defaultDisplayHeight = context.resources.displayMetrics.heightPixels
     var defaultDisplayRotation = context.display.rotation
@@ -172,15 +172,6 @@ class FreeformWindow(
             } else {
                 startApp()
             }
-
-            val rightView = resourceHolder.getLayoutChildViewByTag<View>(freeformLayout, "rightView")
-            if (null == rightView) {
-                Slog.e(TAG, "right&rightScale view is null")
-                destroy("onDisplayAdd:rightView is null")
-                return@post
-            }
-            rightView.setOnClickListener(RightViewClickListener(displayId))
-            rightView.setOnLongClickListener(RightViewLongClickListener(this))
         }
     }
 
@@ -303,12 +294,15 @@ class FreeformWindow(
         topBarView.setOnTouchListener(moveTouchListener)
         middleView.setOnTouchListener(moveTouchListener)
         val leftView = resourceHolder.getLayoutChildViewByTag<View>(freeformLayout, "leftView") ?: return false
+        val rightView = resourceHolder.getLayoutChildViewByTag<View>(freeformLayout, "rightView") ?: return false
         val leftScaleView = resourceHolder.getLayoutChildViewByTag<View>(freeformLayout, "leftScaleView") ?: return false
         val rightScaleView = resourceHolder.getLayoutChildViewByTag<View>(freeformLayout, "rightScaleView") ?: return false
         leftView.setOnClickListener(LeftViewClickListener(this))
         if (!(appConfig.packageName == SIDEBAR_PACKAGE && appConfig.activityName == ALL_APP_ACTIVITY)) {
-            // Sidebar all apps activity should not be fullscreen.
+            // Sidebar all apps activity should not be fullscreen and not allowed to be minimized.
             leftView.setOnLongClickListener(LeftViewLongClickListener(this))
+            rightView.setOnLongClickListener(RightViewLongClickListener(this))
+            rightView.setOnClickListener(RightViewClickListener(this))
         }
         leftScaleView.setOnTouchListener(ScaleTouchListener(this, false))
         rightScaleView.setOnTouchListener(ScaleTouchListener(this))
@@ -321,7 +315,7 @@ class FreeformWindow(
             width = freeformConfig.width
             height = freeformConfig.height
         }
-        freeformRootView.addView(freeformView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        freeformRootView.addView(freeformView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT) 
         windowParams.apply {
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             width = WindowManager.LayoutParams.WRAP_CONTENT

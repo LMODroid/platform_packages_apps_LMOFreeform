@@ -86,9 +86,9 @@ class RightViewLongClickListener(private val window: FreeformWindow): View.OnLon
     }
 }
 
-class RightViewClickListener(private val displayId: Int) : View.OnClickListener {
+class RightViewClickListener(private val window: FreeformWindow) : View.OnClickListener {
     override fun onClick(v: View) {
-        LMOFreeformServiceHolder.back(displayId)
+        LMOFreeformServiceHolder.back(window.displayId)
     }
 }
 
