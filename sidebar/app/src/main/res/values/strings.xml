@@ -9,4 +9,5 @@
     <string name="sidebar_settings_description">Open sidebar settings</string>
     <string name="sidebar_predicted_apps">Show app suggestions</string>
     <string name="sidebar_predicted_apps_summary">Show upto 6 suggested apps below pinned apps</string>
+    <string name="sidebar_app_suggested_summary">Currently shown as a suggested app. Turn on to pin it at the top.</string>
 </resources>

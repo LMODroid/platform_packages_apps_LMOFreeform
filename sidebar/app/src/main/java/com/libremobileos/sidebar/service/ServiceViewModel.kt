@@ -145,7 +145,8 @@ class ServiceViewModel(private val application: Application): AndroidViewModel(a
                                 application.getBadgedIcon(info, target.user),
                                 info.packageName,
                                 component.className,
-                                userId
+                                userId,
+                                isPinned = false
                             )
                         }
                     }.onFailure { e ->
@@ -197,7 +198,8 @@ class ServiceViewModel(private val application: Application): AndroidViewModel(a
     companion object {
         private const val ALL_APP_PACKAGE = "com.libremobileos.sidebar"
         private const val ALL_APP_ACTIVITY = "com.libremobileos.sidebar.ui.all_app.AllAppActivity"
-        private const val MAX_PREDICTED_APPS = 6
+        const val MAX_PREDICTED_APPS = 6
+        const val PREDICTION_UI_SURFACE = "hotseat"
         const val KEY_SHOW_PREDICTED_APPS = "sidebar_show_predicted_apps"
     }
 
@@ -247,7 +249,7 @@ class ServiceViewModel(private val application: Application): AndroidViewModel(a
         }
         appPredictor = appPredictionManager.createAppPredictionSession(
             AppPredictionContext.Builder(appContext)
-                .setUiSurface("hotseat")
+                .setUiSurface(PREDICTION_UI_SURFACE)
                 .setPredictedTargetCount(MAX_PREDICTED_APPS)
                 .build()
         ).apply {

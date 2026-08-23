@@ -11,7 +11,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,13 +25,14 @@ import com.android.settingslib.spa.widget.scaffold.SettingsScaffold
 import com.android.settingslib.spa.widget.ui.Category
 import com.libremobileos.sidebar.R
 import com.libremobileos.sidebar.bean.SidebarAppInfo
+import com.libremobileos.sidebar.utils.toKey
 
 @Composable
 fun SidebarSettingsPage(
     viewModel: SidebarSettingsViewModel
 ) {
     val navController = rememberNavController()
-    var mainChecked = rememberSaveable { mutableStateOf(viewModel.getSidebarEnabled()) }
+    val mainChecked = rememberSaveable { mutableStateOf(viewModel.getSidebarEnabled()) }
 
     CompositionLocalProvider(navController.localNavController()) {
         SettingsScaffold(
@@ -54,7 +54,7 @@ fun SidebarSettingsPage(
                     SidebarSettingSwitch(
                         title = stringResource(R.string.sidebar_predicted_apps),
                         summary = stringResource(R.string.sidebar_predicted_apps_summary),
-                        isChecked = viewModel.getPredictedAppsEnabled(),
+                        isChecked = viewModel.isPredictedAppsEnabled(),
                         onCheckedChange = { viewModel.setPredictedAppsEnabled(it) }
                     )
                     SidebarAppList(viewModel)
@@ -73,14 +73,17 @@ fun SidebarAppList(
         title = stringResource(R.string.sidebar_app_setting_label)
     ) {
         LazyColumn {
-            items(sidebarApps) { appInfo ->
+            items(
+                items = sidebarApps,
+                key = { it.toKey() }
+            ) { appInfo ->
                 SidebarAppListItem(
                     appInfo = appInfo,
                     onCheckedChange = { isChecked ->
                         if (isChecked) {
-                            viewModel.addSidebarApp(appInfo)
+                            viewModel.addPinnedApp(appInfo)
                         } else {
-                            viewModel.deleteSidebarApp(appInfo)
+                            viewModel.deletePinnedApp(appInfo)
                         }
                     }
                 )
@@ -94,10 +97,13 @@ fun SidebarAppListItem(
     appInfo: SidebarAppInfo,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    var appChecked = rememberSaveable { mutableStateOf(appInfo.isSidebarApp) }
+    val predictedSummary = stringResource(R.string.sidebar_app_suggested_summary)
     SwitchPreference(
         model = object : SwitchPreferenceModel {
             override val title = appInfo.label
+            override val summary = {
+                if (appInfo.isPredicted) predictedSummary else ""
+            }
             override val icon = @Composable {
                 Image(
                     painter = rememberDrawablePainter(appInfo.icon),
@@ -105,11 +111,8 @@ fun SidebarAppListItem(
                     modifier = Modifier.size(SettingsDimension.appIconItemSize)
                 )
             }
-            override val checked = { appChecked.value }
-            override val onCheckedChange: (Boolean) -> Unit = {
-                appChecked.value = it
-                onCheckedChange(it)
-            }
+            override val checked = { appInfo.isPinned }
+            override val onCheckedChange = onCheckedChange
         },
     )
 }
@@ -121,7 +124,7 @@ fun SidebarSettingSwitch(
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    var myChecked = rememberSaveable { mutableStateOf(isChecked) }
+    val myChecked = rememberSaveable { mutableStateOf(isChecked) }
     SwitchPreference(
         model = object : SwitchPreferenceModel {
             override val title = title

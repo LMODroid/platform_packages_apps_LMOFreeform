@@ -8,6 +8,6 @@ data class SidebarAppInfo(
     val packageName: String,
     val activityName: String,
     val userId: Int,
-    // 当前APP是否在侧边栏中展示
-    var isSidebarApp: Boolean = false
+    var isPinned: Boolean = false,
+    var isPredicted: Boolean = false
 )
