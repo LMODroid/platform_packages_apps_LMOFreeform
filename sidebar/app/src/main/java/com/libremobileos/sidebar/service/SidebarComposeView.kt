@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,12 +34,15 @@ fun SidebarComposeView(
     modifier: Modifier = Modifier
 ) {
     val sidebarAppList by viewModel.sidebarAppListFlow.collectAsState()
-    Card(
+    ElevatedCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 6.dp
+        ),
         shape = RoundedCornerShape(16.dp),
-        modifier = modifier
+        modifier = modifier.padding(12.dp)
     ) {
         LazyColumn {
             item {
