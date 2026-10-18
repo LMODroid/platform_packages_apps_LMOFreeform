@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.app.ITaskStackListener
 import android.content.ComponentName
 import android.view.Display
-import android.window.TaskSnapshot
 import com.libremobileos.freeform.server.util.Debug.dlog
 import kotlin.math.max
 import kotlin.math.min
@@ -100,10 +99,6 @@ class FreeformTaskStackListener(
         }
     }
 
-    override fun onActivityRequestedOrientationChanged(taskId: Int, requestedOrientation: Int) {
-
-    }
-
     override fun onTaskRemovalStarted(taskInfo: ActivityManager.RunningTaskInfo?) {
         val displayId = taskInfo?.displayId ?: return
         if (this.displayId == displayId) {
@@ -114,10 +109,6 @@ class FreeformTaskStackListener(
     }
 
     override fun onTaskProfileLocked(taskInfo: ActivityManager.RunningTaskInfo, userId: Int) {
-
-    }
-
-    override fun onTaskSnapshotChanged(taskId: Int, snapshot: TaskSnapshot) {
 
     }
 
@@ -155,9 +146,10 @@ class FreeformTaskStackListener(
 
     }
 
-    override fun onTaskRequestedOrientationChanged(taskId: Int, requestedOrientation: Int) {
+    // Android 17 dropped onTaskRequestedOrientationChanged; the activity-level callback carries the task id
+    override fun onActivityRequestedOrientationChanged(taskId: Int, requestedOrientation: Int) {
         if (taskId == this.taskId) {
-            dlog(TAG, "onTaskRequestedOrientationChanged: $requestedOrientation")
+            dlog(TAG, "onActivityRequestedOrientationChanged: $requestedOrientation")
             window.postOnHandler {
                 val max = max(freeformConfig.width, freeformConfig.height)
                 val min = min(freeformConfig.width, freeformConfig.height)
@@ -196,7 +188,4 @@ class FreeformTaskStackListener(
 
     }
 
-    override fun onTaskSnapshotInvalidated(taskId: Int) {
-
-    }
 }
